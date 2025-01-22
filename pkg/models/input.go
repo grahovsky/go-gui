@@ -11,8 +11,8 @@ var CurrentInput InputData
 
 func init() {
 	CurrentInput = InputData{
-		Value1: "100",
-		Value2: "3",
+		Value1: "500",
+		Value2: "right",
 		Value3: "Terminal",
 	}
 }

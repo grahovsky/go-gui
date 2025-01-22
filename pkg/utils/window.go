@@ -25,16 +25,22 @@ func SendKeyToWindow(windowName, key string) {
 	robotgo.ActivePid(pid[0])
 
 	value1, err1 := strconv.Atoi(models.CurrentInput.Value1)
-	_, err2 := strconv.Atoi(models.CurrentInput.Value2)
 
-	if err1 != nil || err2 != nil {
+	if err1 != nil {
 		fmt.Println("Ошибка: некорректный ввод")
 		return
 	}
 
 	randomDelay(value1)
 
-	robotgo.TypeStr(key)
+	if key == "left" {
+		robotgo.Click()
+	} else if key == "right" {
+		robotgo.Click("right")
+	} else {
+		robotgo.TypeStr(key)
+	}
+
 	fmt.Printf("Key '%s' sent to window '%s' '%s' \n", key, windowName, time.Now())
 }
 
