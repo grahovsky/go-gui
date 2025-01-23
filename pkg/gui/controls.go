@@ -1,7 +1,9 @@
 package gui
 
 import (
-	"go-gui/pkg/models"
+	"log/slog"
+
+	"go-gui/pkg/config"
 	"go-gui/pkg/tasks"
 
 	"fyne.io/fyne/v2"
@@ -10,58 +12,68 @@ import (
 )
 
 func WindowContent(window fyne.Window) *fyne.Container {
-	input1, input2, input3, hint, startBtn := SetupControls(window)
+	inputs, hint, startBtn := SetupControls(window)
 
-	inputs := container.NewGridWithColumns(3,
-		container.NewVBox(widget.NewLabel("Delay:"), input1),
-		container.NewVBox(widget.NewLabel("Key:"), input2),
-		container.NewVBox(widget.NewLabel("Window name:"), input3),
-	)
-	// inputs := container.NewGridWithColumns(2,
-	// 	input1,
-	// 	input2,
-	// )
-	// buttons := container.NewGridWithColumns(2, startBtn, stopBtn)
-	buttons := container.NewGridWithColumns(1, startBtn)
+	inputs = append(inputs, container.NewGridWithColumns(1, startBtn))
+	canvas := []fyne.CanvasObject{}
+	for _, input := range inputs {
+		canvas = append(canvas, input)
+	}
+	canvas = append(canvas, widget.NewLabel("Description:"))
+	canvas = append(canvas, hint)
 
 	go RegisterHotkeys(startBtn)
 
 	return container.NewVBox(
-		inputs,
-		buttons,
-		widget.NewLabel("Description:"),
-		hint,
+		canvas...,
 	)
 }
 
-func SetupControls(window fyne.Window) (input1, input2, input3 *widget.Entry, hint *widget.TextGrid, startBtn *widget.Button) {
-	input1 = widget.NewEntry()
-	input1.SetPlaceHolder("Delay")
-	input1.SetText(models.CurrentInput.Value1)
-	input1.OnChanged = func(text string) {
-		models.CurrentInput.Value1 = text
+func SetupControls(window fyne.Window) (inputs []*fyne.Container, hint *widget.TextGrid, btn *widget.Button) {
+	input := widget.NewEntry()
+	input.SetPlaceHolder("Window name")
+	input.SetText(config.Settings.Window.Name)
+	input.OnChanged = func(text string) {
+		config.Settings.Window.Name = text
 	}
+	newContainer := container.NewGridWithColumns(1,
+		container.NewVBox(widget.NewLabel("Window name:"), input))
+	inputs = append(inputs, newContainer)
 
-	input2 = widget.NewEntry()
-	input2.SetPlaceHolder("Key")
-	input2.SetText(models.CurrentInput.Value2)
-	input2.OnChanged = func(text string) {
-		models.CurrentInput.Value2 = text
-	}
+	inputs = append(inputs, container.NewGridWithColumns(3, widget.NewLabel("Delay:"),
+		widget.NewLabel("Key:"), widget.NewLabel("Clip:")))
+	for i, keySet := range config.Settings.Keys {
+		input1 := widget.NewEntry()
+		input1.SetPlaceHolder("Delay")
+		input1.SetText(keySet.Delay)
+		input1.OnChanged = func(text string) {
+			config.Settings.Keys[i].Delay = text
+		}
 
-	input3 = widget.NewEntry()
-	input3.SetPlaceHolder("Window name")
-	input3.SetText(models.CurrentInput.Value3)
-	input3.OnChanged = func(text string) {
-		models.CurrentInput.Value3 = text
+		input2 := widget.NewEntry()
+		input2.SetPlaceHolder("Key")
+		input2.SetText(keySet.Value)
+		input2.OnChanged = func(text string) {
+			config.Settings.Keys[i].Value = text
+		}
+
+		input3 := widget.NewEntry()
+		input3.SetPlaceHolder("Random")
+		input3.SetText(keySet.Clip)
+		input3.OnChanged = func(text string) {
+			config.Settings.Keys[i].Clip = text
+		}
+
+		newContainer := container.NewGridWithColumns(3, input1, input2, input3)
+		inputs = append(inputs, newContainer)
 	}
 
 	hint = widget.NewTextGrid()
-	hint.SetText("Здесь будет отображаться подсказка")
-
-	startBtn = widget.NewButton("Start/Stop", func() {
-		tasks.StartBackgroundTask(hint)
+	btn = widget.NewButton("Start/Stop", func() {
+		if err := tasks.StartBackgroundTask(hint); err != nil {
+			slog.Error(err.Error())
+		}
 	})
 
-	return input1, input2, input3, hint, startBtn
+	return inputs, hint, btn
 }

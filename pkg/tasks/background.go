@@ -3,7 +3,7 @@ package tasks
 import (
 	"fmt"
 
-	"go-gui/pkg/models"
+	"go-gui/pkg/config"
 	"go-gui/pkg/utils"
 
 	"fyne.io/fyne/v2/widget"
@@ -14,27 +14,39 @@ var (
 	isRunning bool
 )
 
-func StartBackgroundTask(hint *widget.TextGrid) {
+func StartBackgroundTask(hint *widget.TextGrid) (result error) {
+	stopChan = make(chan bool)
 	if !isRunning {
 
+		hint.SetText(fmt.Sprintf("Start with params: %s, %s", config.Settings.Keys[0].Value, config.Settings.Keys[0].Delay))
+		if err := utils.GetActivePid(); err != nil {
+			hint.SetText(err.Error())
+			return err
+		}
 		isRunning = true
-		stopChan = make(chan bool)
-		hint.SetText(fmt.Sprintf("Запущено с параметрами: %s и %s", models.CurrentInput.Value1, models.CurrentInput.Value2))
 
-		go func() {
-			for {
-				select {
-				case <-stopChan:
-					hint.SetText("Остановлено")
-					return
-				default:
-					utils.RunLogic()
+		for _, keySet := range config.Settings.Keys {
+			go func() {
+				for {
+					select {
+					case <-stopChan:
+						hint.SetText("Stopped")
+						return
+					default:
+						if err := utils.RunLogic(&keySet); err != nil {
+							result = err
+							fmt.Println(err)
+							close(stopChan)
+						}
+					}
 				}
-			}
-		}()
+			}()
+		}
 	} else if isRunning {
 		isRunning = false
 		close(stopChan)
-		hint.SetText("Остановлено")
+		hint.SetText("Stopped")
 	}
+
+	return result
 }

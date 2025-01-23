@@ -1,0 +1,12 @@
+log:
+  level: "INFO"
+window:
+  name: "Terminal"
+hotkey: "alt+c"
+keys:
+  - value: "1"
+    delay: "1000"
+    clip: "1"
+  - value: "2"
+    delay: "200"
+    clip: "5"

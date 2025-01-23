@@ -2,46 +2,77 @@ package utils
 
 import (
 	"fmt"
+	"log/slog"
 	"strconv"
 	"time"
 
+	"go-gui/pkg/config"
 	"go-gui/pkg/models"
 
 	"github.com/go-vgo/robotgo"
 	"golang.org/x/exp/rand"
 )
 
-func RunLogic() {
-	SendKeyToWindow(models.CurrentInput.Value3, models.CurrentInput.Value2)
+func RunLogic(keySet *models.KeyConfig) error {
+	return SendKeyToWindow(keySet)
 }
 
-func SendKeyToWindow(windowName, key string) {
-	pid, err := robotgo.FindIds(windowName)
-	if err != nil || len(pid) == 0 {
-		fmt.Printf("Error: window '%s' not found\n", windowName)
-		return
-	}
+func SendKeyToWindow(keySet *models.KeyConfig) error {
+	key := keySet.Value
+	delay := keySet.Delay
+	clip := keySet.Clip
 
-	robotgo.ActivePid(pid[0])
-
-	value1, err1 := strconv.Atoi(models.CurrentInput.Value1)
-
+	delayInt, err1 := strconv.Atoi(delay)
 	if err1 != nil {
-		fmt.Println("Ошибка: некорректный ввод")
-		return
+		return err1
+	}
+	clipInt, err2 := strconv.Atoi(clip)
+	if err2 != nil {
+		return err2
 	}
 
-	randomDelay(value1)
+	if err := robotgo.ActivePid(config.Settings.Window.ActivePid); err != nil {
+		return err
+	}
+
+	randomDelay(delayInt)
+	if !clipHit(clipInt) {
+		return nil
+	}
+
+	robotgo.KeySleep = 39 + rand.Intn(15)
+	robotgo.MouseSleep = 19 + rand.Intn(10)
 
 	if key == "left" {
 		robotgo.Click()
 	} else if key == "right" {
 		robotgo.Click("right")
 	} else {
-		robotgo.TypeStr(key)
+		if err := robotgo.KeyTap(key); err != nil {
+			return err
+		}
 	}
 
-	fmt.Printf("Key '%s' sent to window '%s' '%s' \n", key, windowName, time.Now())
+	slog.Info("Key '%s' sent to window '%s' '%s' \n", key, config.Settings.Window.Name, time.Now())
+
+	return nil
+}
+
+func GetActivePid() error {
+	windowName := config.Settings.Window.Name
+	pids, err := robotgo.FindIds(windowName)
+	if err != nil || len(pids) == 0 {
+		errf := fmt.Errorf("Error: window '%s' not found\n", windowName)
+		return errf
+	}
+	config.Settings.Window.ActivePid = pids[0]
+
+	return nil
+}
+
+func clipHit(chance int) bool {
+	r := rand.Intn(chance) + 1
+	return chance == r
 }
 
 func randomDelay(duration int) {

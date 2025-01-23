@@ -1,12 +1,17 @@
 package gui
 
 import (
+	"strings"
+
+	"go-gui/pkg/config"
+
 	"fyne.io/fyne/v2/widget"
 	hook "github.com/robotn/gohook"
 )
 
 func RegisterHotkeys(startBtn *widget.Button) {
-	hook.Register(hook.KeyDown, []string{"alt", "s"}, func(e hook.Event) {
+	hotkey := strings.Split(config.Settings.HotKey, "+")
+	hook.Register(hook.KeyDown, hotkey, func(e hook.Event) {
 		startBtn.OnTapped()
 	})
 
